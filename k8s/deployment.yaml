@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slowpg
+  labels:
+    app: slowpg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slowpg
+  template:
+    metadata:
+      labels:
+        app: slowpg
+    spec:
+      imagePullSecrets:
+        - name: gitlab-regcred
+      containers:
+      - name: slowpg
+        image: "YOUR IMAGE REGISTRY"
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+          - name: PG_USER
+            value: postgres
+          - name: PG_PASS
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: postgres-password
+          - name: PG_HOST
+            value: postgresql.develop
+          - name: PG_PORT
+            value: "5432"
+          - name: PG_DBNAME
+            value: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slowpg
+spec:
+  selector:
+    app: slowpg
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
