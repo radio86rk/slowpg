@@ -6,4 +6,5 @@ RUN CGO_ENABLED=0 go build -o exporter cmd/exporter/main.go
 FROM scratch
 WORKDIR /app
 COPY --from=builder /build/exporter .
+COPY --from=builder /build/.env .
 ENTRYPOINT ["/app/exporter"] 
