@@ -1,6 +1,7 @@
 package main
 
 import (
+    // _ "net/http/pprof"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +14,6 @@ import (
 )
 
 func main() {
-
 	log.SetFormatter(&log.JSONFormatter{})
 
 	ctx, cancel := context.WithCancel(context.TODO())

@@ -23,7 +23,7 @@ func Run(ctx context.Context,
 				return err
 			}
 			time.Sleep(time.Millisecond * time.Duration(scrapms))
-			qc.CollectMetric()
+			// qc.CollectMetric()
 		}
 
 	}

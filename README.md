@@ -4,8 +4,7 @@
 
 > Build it and push into your docker registry
 
-![Alt text](./images/screen1.png?raw=true "Screen1")
-![Alt text](./images/screen2.png?raw=true "Screen2")
+![Alt text](./images/db.png?raw=true "Screen1")
 
 
 > Prometheus scrap config 
