@@ -23,10 +23,9 @@ type Query struct {
 }
 
 type QueryCollector struct {
-	allQueries map[string]Query
+	allQueries map[string]*Query
 	metric *prometheus.Desc
 	mu sync.Mutex
-	// gauge  *prometheus.GaugeVec
 }
 
 func (qc *QueryCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -46,7 +45,8 @@ func (qc *QueryCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) error {
-	query := "SELECT datname,query,state,query_start,state_change FROM pg_stat_activity WHERE query IS NOT NULL AND state IS NOT NULL AND  query_start IS NOT NULL"
+	query := `SELECT datname,query,state,query_start,state_change FROM pg_stat_activity WHERE query IS NOT NULL
+			  AND state IS NOT NULL AND  query_start IS NOT NULL  AND query NOT LIKE '%pg_stat_activity%'`
 	rows, err := pgpool.Query(ctx, query)
 	defer rows.Close()
 	if err != nil {
@@ -62,9 +62,9 @@ func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) err
 		h := sha1.New()
 		h.Write([]byte(q.Query+q.QueryStart.String()))
 		hashedQuery := base64.URLEncoding.EncodeToString(h.Sum(nil))
-		if q.State == "active" {
+		if q.State == "active"{
 			qc.mu.Lock()
-			qc.allQueries[hashedQuery] = q
+			qc.allQueries[hashedQuery] = &q
 			qc.mu.Unlock()
 			continue
 		}
@@ -83,7 +83,7 @@ func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) err
 
 func New(promMetricName string) *QueryCollector {
 	collector := QueryCollector{
-		allQueries: make(map[string]Query, 100),
+		allQueries: make(map[string]*Query),
 		metric:  prometheus.NewDesc(
             promMetricName,
             "Duration of the query",
