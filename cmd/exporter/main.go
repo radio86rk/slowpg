@@ -56,12 +56,5 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 	log.Info("Starting exporter :8080")
 
-	go func() {
-		if err = http.ListenAndServe(":8080", nil); err != nil {
-			log.Error(err)
-			cancel()
-		}
-	}()
-
 	<-ctx.Done()
 }
