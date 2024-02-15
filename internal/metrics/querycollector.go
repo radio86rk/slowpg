@@ -23,9 +23,9 @@ type Query struct {
 }
 
 type QueryCollector struct {
-	allQueries map[string]*Query
+	allQueries map[string]Query
 	metric *prometheus.Desc
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func (qc *QueryCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -33,15 +33,21 @@ func (qc *QueryCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (qc *QueryCollector) Collect(ch chan<- prometheus.Metric) {
-	qc.mu.Lock()
+	tmpQueries := make(map[string]Query)
+	qc.mu.RLock()
 	for k, v := range qc.allQueries {
 		if v.IsDelete {
-			metric := prometheus.MustNewConstMetric(qc.metric, prometheus.GaugeValue, float64(v.Duration.Seconds()),v.Database, v.Query )
-			ch <- metric
-			delete(qc.allQueries, k)
+			tmpQueries[k] = v
 		}
 	}
-	qc.mu.Unlock()
+	qc.mu.RUnlock()
+	for k, v := range tmpQueries {
+		metric := prometheus.MustNewConstMetric(qc.metric, prometheus.GaugeValue, float64(v.Duration.Seconds()),v.Database, v.Query )
+		ch <- metric
+		qc.mu.Lock()
+		delete(qc.allQueries, k)
+		qc.mu.Unlock()
+	}
 }
 
 func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) error {
@@ -64,7 +70,7 @@ func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) err
 		hashedQuery := base64.URLEncoding.EncodeToString(h.Sum(nil))
 		if q.State == "active"{
 			qc.mu.Lock()
-			qc.allQueries[hashedQuery] = &q
+			qc.allQueries[hashedQuery] = q
 			qc.mu.Unlock()
 			continue
 		}
@@ -83,7 +89,7 @@ func (qc *QueryCollector) DoQuery(ctx context.Context, pgpool *pgxpool.Pool) err
 
 func New(promMetricName string) *QueryCollector {
 	collector := QueryCollector{
-		allQueries: make(map[string]*Query),
+		allQueries: make(map[string]Query),
 		metric:  prometheus.NewDesc(
             promMetricName,
             "Duration of the query",
